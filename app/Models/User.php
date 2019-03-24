@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Notifications\DefaultResetPasswordNotification;
+use Bootstrapper\Interfaces\TableInterface;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Prettus\Repository\Contracts\Transformable;
+use Prettus\Repository\Traits\TransformableTrait;
 
 /**
  * App\Models\User
@@ -33,9 +36,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\User whereUpdatedAt($value)
  * @mixin \Eloquent
  */
-class User extends Authenticatable
+class User extends Authenticatable implements TableInterface, Transformable
 {
     use Notifiable;
+    use TransformableTrait;
 
     const ROLE_ADMIN = 1;
     const ROLE_CLIENT = 2;
@@ -67,4 +71,40 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+    public static function generatedPassword($password = null){
+        return  !$password ? bcrypt(\Str::random(8)) : bcrypt($password);
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new DefaultResetPasswordNotification($token));
+    }
+
+    /**
+     * A list of headers to be used when a table is displayed
+     *
+     * @return array
+     */
+    public function getTableHeaders()
+    {
+        return ['#', 'Name', 'Email', 'Role'];
+    }
+
+    /**
+     * Get the value for a given header. Note that this will be the value
+     * passed to any callback functions that are being used.
+     *
+     * @param string $header
+     * @return mixed
+     */
+    public function getValueForHeader($header)
+    {
+        switch ($header){
+            case '#': return $this->id;
+            case 'Name': return $this->name;
+            case 'Email': return $this->email;
+            case 'Role': return $this->role == 1 ? 'Administrador' : 'Cliente' ;
+        }
+
+    }
 }
